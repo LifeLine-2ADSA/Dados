@@ -1,4 +1,4 @@
--- drop database lifeline;
+ -- drop database lifeline;
 CREATE DATABASE lifeline;
 USE lifeline;
 
@@ -24,17 +24,18 @@ CREATE TABLE usuario(
         email VARCHAR (45),
         cpf CHAR(11),
         fkEmpresa INT,
-        CONSTRAINT fkEmpresaWUser FOREIGN KEY (fkEmpresa) REFERENCES empresa(idEmpresa)
+        CONSTRAINT fkEmpresaWUser FOREIGN KEY (fkEmpresa) REFERENCES empresa(idEmpresa),
+        CONSTRAINT ckCargo CHECK (cargo IN('TI', 'Saúde'))
 );
 
 CREATE TABLE maquina(
 	idMaquina INT AUTO_INCREMENT PRIMARY KEY,
     ip VARCHAR(20),
     sistemaOperacional VARCHAR(45),
-    limiteCpu DOUBLE,
-    limiteRam DOUBLE,
-    limiteDisco DOUBLE,
-    qtdDispositivosConectados INT
+    maxCpu DOUBLE,
+	maxRam DOUBLE,
+    maxDisco DOUBLE,
+    maxDispositivos INT
 )auto_increment = 500;
 
 CREATE TABLE usuario_maquina(
@@ -66,18 +67,65 @@ CREATE TABLE registro(
     consumoDisco DOUBLE,
     consumoRam DOUBLE,
     consumoCpu DOUBLE,
-    totalDispositivosConectados INT,
+    consumoDispositivos INT,
     CONSTRAINT fkMaquinaWRegistro FOREIGN KEY (fkMaquina) REFERENCES maquina(idMaquina),
     PRIMARY KEY(idRegistro, fkMaquina)
 ) auto_increment=400;
 
-/*
+CREATE TABLE limitador(
+	idLimitador INT AUTO_INCREMENT,
+    fkMaquina INT,
+    limiteCpu DOUBLE,
+	limiteRam DOUBLE,
+    limiteDisco DOUBLE,
+	limiteDispositivos INT,
+    PRIMARY KEY(idLimitador,fkMaquina)
+);
+
 CREATE TABLE alerta(
 	idAlerta INT AUTO_INCREMENT,
-);
-*/
+    dataAlerta DATETIME,
+    fkRegistro INT,
+    CONSTRAINT fkRegistroWAlerta FOREIGN KEY (fkRegistro) REFERENCES registro(idRegistro),
+    PRIMARY KEY(idAlerta,fkRegistro)
+)auto_increment=700;
+
 
 show tables;
+
+-- Criação de trigger para tabela alerta
+/*
+DELIMITER $$
+
+CREATE TRIGGER trg_check_limits
+AFTER INSERT ON registro
+FOR EACH ROW
+BEGIN
+    -- Declara variáveis para armazenar os limites
+    DECLARE v_limiteCpu DOUBLE DEFAULT 0;
+    DECLARE v_limiteRam DOUBLE DEFAULT 0;
+    DECLARE v_limiteDisco DOUBLE DEFAULT 0;
+    DECLARE v_limiteDispositivos INT DEFAULT 0;
+    DECLARE v_hasLimit BOOLEAN DEFAULT FALSE;
+
+    -- Tenta recuperar os limites da tabela limitador para a máquina correspondente
+    SELECT limiteCpu, limiteRam, limiteDisco, limiteDispositivos INTO v_limiteCpu, v_limiteRam, v_limiteDisco, v_limiteDispositivos
+    FROM limitador
+    WHERE fkMaquina = NEW.fkMaquina;
+
+    -- Define v_hasLimit se algum limite foi efetivamente recuperado
+    SET v_hasLimit = (v_limiteCpu IS NOT NULL AND v_limiteRam IS NOT NULL AND v_limiteDisco IS NOT NULL AND v_limiteDispositivos IS NOT NULL);
+
+    -- Verifica se algum limite foi ultrapassado e insere um alerta se necessário
+    IF v_hasLimit AND (NEW.consumoCpu > v_limiteCpu OR NEW.consumoRam > v_limiteRam OR NEW.consumoDisco > v_limiteDisco OR NEW.consumoDispositivos > v_limiteDispositivos) THEN
+        INSERT INTO alerta(dataAlerta, fkRegistro)
+        VALUES(NOW(), NEW.idRegistro);
+    END IF;
+END$$
+
+DELIMITER ;
+*/
+
 
 -- Inserindo dados mokados nas tabelas
 INSERT INTO empresa (nome, cnpj, logradouro, email, telefone, matriz) VALUES 
@@ -87,7 +135,7 @@ INSERT INTO empresa (nome, cnpj, logradouro, email, telefone, matriz) VALUES
 ('Web Creators', '45678901234567', 'Alameda dos Desenvolvedores, 550', 'contact@webcreators.com', '41987654321', NULL),
 ('Data Science Corp', '56789012345678', 'Via dos Analistas, 700', 'support@datasciencecorp.com', '51987654321', 103);
 
-INSERT INTO maquina (ip, sistemaOperacional, limiteCpu, limiteRam, limiteDisco, qtdDispositivosConectados) VALUES 
+INSERT INTO maquina (ip, sistemaOperacional, maxCpu, maxRam, maxDisco, maxDispositivos) VALUES 
 ('192.168.1.1', 'Windows Server 2019', 2.3, 8.0, 500.0, 10),
 ('10.20.30.40', 'Ubuntu 20.04', 3.5, 16.0, 1024.0, 20),
 ('172.16.0.1', 'Red Hat Enterprise Linux 8', 2.9, 32.0, 2048.0, 30),
@@ -95,11 +143,11 @@ INSERT INTO maquina (ip, sistemaOperacional, limiteCpu, limiteRam, limiteDisco, 
 ('10.0.0.1', 'Debian 10', 2.5, 4.0, 512.0, 15);
 
 INSERT INTO usuario (nome, endereco, telefone, cargo, senha, email, cpf, fkEmpresa) VALUES 
-('João Silva', 'Rua dos Usuários, 123', '11912345678', 'Profissional da saúde', 'senha123', 'joao@techinnovations.com', '12345678901', 100),
-('Maria Oliveira', 'Av. dos Testadores, 456', '21987654321', 'Profissional de TI', 'senha456', 'maria@solucoesint.com', '23456789012', 100),
-('Carlos Pereira', 'Alameda dos Programadores, 789', '31987654321', 'Profissional de TI', 'senha789', 'carlos@devdreams.com', '34567890123', 102),
-('Ana Costa', 'Rua da Inovação, 101', '41987654321', 'Profissional da saúde', 'senha012', 'ana@webcreators.com', '45678901234', 102),
-('Roberto Nascimento', 'Av. dos Desenvolvedores, 202', '51987654321', 'Profissional da saúde', 'senha345', 'roberto@datasciencecorp.com', '56789012345', NULL);
+('João Silva', 'Rua dos Usuários, 123', '11912345678', 'Saúde', 'senha123', 'joao@techinnovations.com', '12345678901', 100),
+('Maria Oliveira', 'Av. dos Testadores, 456', '21987654321', 'TI', 'senha456', 'maria@solucoesint.com', '23456789012', 100),
+('Carlos Pereira', 'Alameda dos Programadores, 789', '31987654321', 'TI', 'senha789', 'carlos@devdreams.com', '34567890123', 102),
+('Ana Costa', 'Rua da Inovação, 101', '41987654321', 'Saúde', 'senha012', 'ana@webcreators.com', '45678901234', 102),
+('Roberto Nascimento', 'Av. dos Desenvolvedores, 202', '51987654321', 'Saúde', 'senha345', 'roberto@datasciencecorp.com', '56789012345', NULL);
 
 INSERT INTO usuario_maquina (fkMaquina, fkUsuario, nomeMaquina) VALUES 
 (500, 1, 'Maquina-Joao'),
@@ -117,12 +165,22 @@ INSERT INTO postagem (titulo, conteudo, tag, fkUsuario, fkMaquina) VALUES
 ('Inteligência Artificial', 'O futuro da IA...', 'CPU', 5, 504);
 
 
-INSERT INTO registro (dataHora, fkMaquina, consumoDisco, consumoRam, consumoCpu, totalDispositivosConectados) VALUES 
-('2024-04-11 10:00:00', 500, 120.0, 2.5, 1.2, 8),
+INSERT INTO registro (dataHora, fkMaquina, consumoDisco, consumoRam, consumoCpu, consumoDispositivos) VALUES 
+('2024-04-11 10:00:00', 500, 120.0, 2.5, 1.2, 5),
 ('2024-04-11 11:00:00', 501, 256.0, 4.0, 1.8, 16),
-('2024-04-11 12:00:00', 502, 512.0, 8.0, 2.5, 24),
-('2024-04-11 13:00:00', 503, 128.0, 3.2, 1.4, 4),
+('2024-04-11 12:00:00', 502, 512.0, 8.0, 1.5, 4),
+('2024-04-11 13:00:00', 503, 128.0, 3.2, 1.4, 0),
 ('2024-04-11 14:00:00', 504, 1024.0, 16.0, 3.0, 12);
+
+
+INSERT INTO limitador (fkMaquina, limiteCpu, limiteRam, limiteDisco, limiteDispositivos)
+SELECT 
+    idMaquina,
+    maxCpu * 0.8,  -- Reduzindo o limite de CPU em 20%
+    maxRam * 0.8,  -- Reduzindo o limite de RAM em 20%
+    maxDisco * 0.8,  -- Reduzindo o limite de disco em 20%
+    FLOOR(maxDispositivos * 0.8)  -- Reduzindo o número de dispositivos em 20% e arredondando para baixo
+FROM maquina;
 
 
 -- Consultando dados
@@ -144,7 +202,7 @@ JOIN usuario u ON p.fkUsuario = u.idUsuario
 JOIN maquina m ON p.fkMaquina = m.idMaquina;
 
 -- Consulta para visualizar o registro de uso de uma máquina
-SELECT m.idMaquina, m.ip, r.dataHora, r.consumoCpu, r.consumoRam, r.consumoDisco, r.totalDispositivosConectados
+SELECT m.idMaquina, m.ip, r.dataHora, r.consumoCpu, r.consumoRam, r.consumoDisco, r.consumoDispositivos
 FROM registro r
 JOIN maquina m ON r.fkMaquina = m.idMaquina;
 
@@ -152,3 +210,13 @@ JOIN maquina m ON r.fkMaquina = m.idMaquina;
 SELECT e1.nome AS Empresa, e2.nome AS Matriz
 FROM empresa e1
 LEFT JOIN empresa e2 ON e1.matriz = e2.idEmpresa;
+
+-- Consulta limite de cada maquina
+SELECT * FROM limitador JOIN maquina ON fkMaquina = idMaquina;
+
+-- Inserindo dados para ultrapassar os limites e acionar o trigger
+/*
+INSERT INTO registro (dataHora, fkMaquina, consumoDisco, consumoRam, consumoCpu, consumoDispositivos) VALUES 
+('2024-04-11 10:00:00', 500,520.0, 7.5, 1.2, 5);
+select * from alerta;
+*/
