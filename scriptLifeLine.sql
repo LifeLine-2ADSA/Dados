@@ -136,7 +136,7 @@ INSERT INTO usuario (nome, endereco, telefone, cargo, senha, email, cpf, fkEmpre
 ('Roberto Nascimento', 'Av. dos Desenvolvedores, 202', '51987654321', 'Saúde', 'senha345', 'roberto@datasciencecorp.com', '56789012345', NULL);
 
 INSERT INTO maquina (nomeMaquina, ip, macAddress, sistemaOperacional, maxCpu, maxRam, maxDisco, maxDispositivos, fkUsuario) VALUES 
-('PC-Joao', '192.168.1.1','ac:19:8e:84:21:78', 'Windows Server 2019', 2.3, 8.0, 500.0, 10, 1),
+('PC-Joao', '192.168.1.1','bc:19:8e:84:21:78', 'Windows Server 2019', 2.3, 8.0, 500.0, 10, 1),
 ('Pc Casa', '10.20.30.40','ac:19:8e:84:21:71', 'Ubuntu 20.04', 3.5, 16.0, 1024.0, 20, 2),
 ('Notebook Empresa', '172.16.0.1','dc:19:8e:84:71:78', 'Red Hat Enterprise Linux 8', 2.9, 32.0, 2048.0, 30, 3),
 ('Notebook Casa', '192.168.2.1','ab:19:8e:84:21:78', 'Windows 10 Pro', 3.7, 64.0, 256.0, 5, 4),
@@ -176,7 +176,7 @@ FROM usuario u
 LEFT JOIN empresa e ON u.fkEmpresa = e.idEmpresa;
 
 -- Consulta para visualizar máquinas e informações do usuário associado
-SELECT m.idMaquina, m.ip, m.sistemaOperacional, m.nomeMaquina, u.nome AS NomeUsuario, u.cargo
+SELECT m.idMaquina,m.macAddress , m.ip, m.sistemaOperacional, m.nomeMaquina, u.nome AS NomeUsuario, u.cargo
 FROM maquina m
 JOIN usuario u ON m.fkUsuario = u.idUsuario;
 
@@ -196,6 +196,9 @@ LEFT JOIN empresa e2 ON e1.matriz = e2.idEmpresa;
 
 -- Consulta limite de cada maquina
 SELECT * FROM limitador JOIN maquina ON fkMaquina = idMaquina;
+
+SELECT * FROM alerta;
+INSERT INTO maquina (nomeMaquina, fkUsuario) VALUES ("Carlos back-end", 1);
 
 -- Inserindo dados para ultrapassar os limites e acionar o trigger
 /*
