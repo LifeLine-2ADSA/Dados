@@ -32,7 +32,7 @@ CREATE TABLE maquina(
 	idMaquina INT AUTO_INCREMENT PRIMARY KEY,
     nomeMaquina VARCHAR(30),
     ip VARCHAR(20),
-	macAddress VARCHAR(20),
+	hostname VARCHAR(20),
     sistemaOperacional VARCHAR(45),
     maxCpu DOUBLE,
 	maxRam DOUBLE,
@@ -60,6 +60,9 @@ CREATE TABLE registro(
     consumoRam DOUBLE,
     consumoCpu DOUBLE,
     consumoDispositivos INT,
+    consumoTemperatura DOUBLE,
+    consumoProcessos INT,
+    consumoJanela VARCHAR(100),
     CONSTRAINT fkMaquinaWRegistro FOREIGN KEY (fkMaquina) REFERENCES maquina(idMaquina),
     PRIMARY KEY(idRegistro, fkMaquina)
 ) auto_increment=400;
@@ -135,7 +138,7 @@ INSERT INTO usuario (nome, endereco, telefone, cargo, senha, email, cpf, fkEmpre
 ('Ana Costa', 'Rua da Inovação, 101', '41987654321', 'Saúde', 'senha012', 'ana@webcreators.com', '45678901234', 102),
 ('Roberto Nascimento', 'Av. dos Desenvolvedores, 202', '51987654321', 'Saúde', 'senha345', 'roberto@datasciencecorp.com', '56789012345', NULL);
 
-INSERT INTO maquina (nomeMaquina, ip, macAddress, sistemaOperacional, maxCpu, maxRam, maxDisco, maxDispositivos, fkUsuario) VALUES 
+INSERT INTO maquina (nomeMaquina, ip, hostname, sistemaOperacional, maxCpu, maxRam, maxDisco, maxDispositivos, fkUsuario) VALUES 
 ('PC-Joao', '192.168.1.1','bc:19:8e:84:21:78', 'Windows Server 2019', 2.3, 8.0, 500.0, 10, 1),
 ('Pc Casa', '10.20.30.40','ac:19:8e:84:21:71', 'Ubuntu 20.04', 3.5, 16.0, 1024.0, 20, 2),
 ('Notebook Empresa', '172.16.0.1','dc:19:8e:84:71:78', 'Red Hat Enterprise Linux 8', 2.9, 32.0, 2048.0, 30, 3),
@@ -176,7 +179,7 @@ FROM usuario u
 LEFT JOIN empresa e ON u.fkEmpresa = e.idEmpresa;
 
 -- Consulta para visualizar máquinas e informações do usuário associado
-SELECT m.idMaquina,m.macAddress , m.ip, m.sistemaOperacional, m.nomeMaquina, u.nome AS NomeUsuario, u.cargo
+SELECT m.idMaquina,m.hostname , m.ip, m.sistemaOperacional, m.nomeMaquina, u.nome AS NomeUsuario, u.cargo
 FROM maquina m
 JOIN usuario u ON m.fkUsuario = u.idUsuario;
 
